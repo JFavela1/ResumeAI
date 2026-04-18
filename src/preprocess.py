@@ -1,6 +1,6 @@
-## Preprocessing Functions
 import re
 import pandas as pd
+
 
 def clean_text(text):
     if not isinstance(text, str):
@@ -8,6 +8,7 @@ def clean_text(text):
     text = text.lower()
     text = re.sub(r"\s+", " ", text)
     return text.strip()
+
 
 def build_clean_dataframe(df: pd.DataFrame) -> pd.DataFrame:
     cols = [
@@ -34,10 +35,22 @@ def build_clean_dataframe(df: pd.DataFrame) -> pd.DataFrame:
     clean_df["resume_clean"] = clean_df["resume"].apply(clean_text)
     clean_df["job_description_clean"] = clean_df["job_description"].apply(clean_text)
 
-    clean_df = clean_df.dropna(subset=["resume_clean", "job_description_clean"])
+    clean_df = clean_df.dropna(subset=[
+        "resume_clean",
+        "job_description_clean",
+        "micro_score",
+        "macro_score",
+    ])
+
     clean_df = clean_df[
         (clean_df["resume_clean"].str.len() > 0) &
         (clean_df["job_description_clean"].str.len() > 0)
     ]
+
+    clean_df = clean_df[
+        clean_df["resume_clean"] != clean_df["job_description_clean"]
+    ]
+
+    clean_df = clean_df.reset_index(drop=True)
 
     return clean_df
