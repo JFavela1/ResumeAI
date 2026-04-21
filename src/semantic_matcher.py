@@ -1,3 +1,5 @@
+# Build a semantic matcher using SBERT
+# The score was low
 import os
 import pandas as pd
 from sentence_transformers import SentenceTransformer

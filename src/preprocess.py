@@ -1,3 +1,4 @@
+# Preprocess the data for training and evaluation
 import re
 import pandas as pd
 
@@ -11,7 +12,7 @@ def clean_text(text):
 
 
 def build_clean_dataframe(df: pd.DataFrame) -> pd.DataFrame:
-    cols = [
+    base_cols = [
         "input.resume",
         "input.job_description",
         "output.scores.aggregated_scores.micro_scores",
@@ -20,7 +21,12 @@ def build_clean_dataframe(df: pd.DataFrame) -> pd.DataFrame:
         "output.valid_resume_and_jd",
     ]
 
-    available_cols = [c for c in cols if c in df.columns]
+    micro_cols = [c for c in df.columns if c.startswith("input.micro_dict.")]
+    macro_cols = [c for c in df.columns if c.startswith("input.macro_dict.")]
+
+    all_cols = base_cols + micro_cols + macro_cols
+    available_cols = [c for c in all_cols if c in df.columns]
+
     clean_df = df[available_cols].copy()
 
     clean_df = clean_df.rename(columns={
@@ -43,14 +49,7 @@ def build_clean_dataframe(df: pd.DataFrame) -> pd.DataFrame:
     ])
 
     clean_df = clean_df[
-        (clean_df["resume_clean"].str.len() > 0) &
-        (clean_df["job_description_clean"].str.len() > 0)
-    ]
-
-    clean_df = clean_df[
         clean_df["resume_clean"] != clean_df["job_description_clean"]
     ]
-
-    clean_df = clean_df.reset_index(drop=True)
 
     return clean_df

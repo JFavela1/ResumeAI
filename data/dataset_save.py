@@ -21,8 +21,8 @@ def main():
     processed_dir = os.path.join(CURRENT_DIR, "processed")
     os.makedirs(processed_dir, exist_ok=True)
 
-    output_path = os.path.join(processed_dir, "clean_resume_job_pairs.csv")
-
+    output_path = os.path.join(processed_dir, "clean_resume_job_pairs_with_skills.csv")
+    
     print("Saving cleaned dataset...")
     clean_df.to_csv(output_path, index=False)
 

@@ -11,8 +11,7 @@ venv/
 # Jupyter
 .ipynb_checkpoints/
 
-# Data (optional if large)
-data/
+
 
 # OS
 .DS_Store
