@@ -1,12 +1,8 @@
-#Implment a baseline BM25 similarity matcher
-import os
+# Baseline BM25 similarity matcher
 import pandas as pd
 from rank_bm25 import BM25Okapi
 
-
-BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-INPUT_PATH = os.path.join(BASE_DIR, "data", "processed", "clean_resume_job_pairs.csv")
-OUTPUT_PATH = os.path.join(BASE_DIR, "data", "processed", "bm25_results.csv")
+from config import CLEAN_PAIRS_PATH, BM25_OUTPUT_PATH
 
 
 def load_clean_data(path: str) -> pd.DataFrame:
@@ -25,12 +21,14 @@ def compute_bm25_pair_scores(df: pd.DataFrame) -> pd.DataFrame:
     job_tokenized = df["job_description_clean"].fillna("").apply(tokenize).tolist()
     resume_tokenized = df["resume_clean"].fillna("").apply(tokenize).tolist()
 
+    # Build the BM25 index over job descriptions, then score each resume
+    # query against its corresponding job description document.
     bm25 = BM25Okapi(job_tokenized)
 
-    bm25_scores = []
-    for i, query_tokens in enumerate(resume_tokenized):
-        scores = bm25.get_scores(query_tokens)
-        bm25_scores.append(scores[i])
+    bm25_scores = [
+        bm25.get_scores(query_tokens)[i]
+        for i, query_tokens in enumerate(resume_tokenized)
+    ]
 
     df["bm25_score"] = bm25_scores
     return df
@@ -38,15 +36,15 @@ def compute_bm25_pair_scores(df: pd.DataFrame) -> pd.DataFrame:
 
 def main():
     print("Loading cleaned dataset...")
-    df = load_clean_data(INPUT_PATH)
+    df = load_clean_data(CLEAN_PAIRS_PATH)
 
     print(f"Dataset shape: {df.shape}")
     print("Computing BM25 scores...")
 
     results_df = compute_bm25_pair_scores(df)
-    results_df.to_csv(OUTPUT_PATH, index=False)
+    results_df.to_csv(BM25_OUTPUT_PATH, index=False)
 
-    print(f"\nSaved BM25 results to: {OUTPUT_PATH}")
+    print(f"\nSaved BM25 results to: {BM25_OUTPUT_PATH}")
     print(f"Shape: {results_df.shape}")
 
     print("\nPreview:")

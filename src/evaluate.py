@@ -1,29 +1,34 @@
-# Evaluated our findings
-import os
+# Evaluate and compare baseline model performance
 import pandas as pd
+import matplotlib
+matplotlib.use("Agg")   # non-interactive backend — safe for scripted runs
 import matplotlib.pyplot as plt
 
+from config import (
+    TFIDF_OUTPUT_PATH,
+    BM25_OUTPUT_PATH,
+    SBERT_OUTPUT_PATH,
+    MODEL_COMPARISON_PATH,
+    MODEL_COMPARISON_PLOT,
+    PROCESSED_DIR,
+)
 
-BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 
-TFIDF_PATH = os.path.join(BASE_DIR, "data", "processed", "tfidf_results.csv")
-BM25_PATH = os.path.join(BASE_DIR, "data", "processed", "bm25_results.csv")
-SBERT_PATH = os.path.join(BASE_DIR, "data", "processed", "sbert_results.csv")
-
-OUTPUT_DIR = os.path.join(BASE_DIR, "data", "processed")
-os.makedirs(OUTPUT_DIR, exist_ok=True)
-
-
-def load_results():
-    tfidf = pd.read_csv(TFIDF_PATH)
-    bm25 = pd.read_csv(BM25_PATH)
-    sbert = pd.read_csv(SBERT_PATH)
-
+def load_results() -> tuple[pd.DataFrame, pd.DataFrame, pd.DataFrame]:
+    tfidf = pd.read_csv(TFIDF_OUTPUT_PATH)
+    bm25 = pd.read_csv(BM25_OUTPUT_PATH)
+    sbert = pd.read_csv(SBERT_OUTPUT_PATH)
     return tfidf, bm25, sbert
 
 
-def compute_correlations(tfidf, bm25, sbert):
-    results = []
+def compute_correlations(
+    tfidf: pd.DataFrame,
+    bm25: pd.DataFrame,
+    sbert: pd.DataFrame,
+) -> pd.DataFrame:
+    # Use a shared ground-truth series rather than always referencing tfidf
+    micro_gt = tfidf["micro_score"]
+    macro_gt = tfidf["macro_score"]
 
     models = {
         "TF-IDF": tfidf["tfidf_similarity"],
@@ -31,50 +36,44 @@ def compute_correlations(tfidf, bm25, sbert):
         "SBERT": sbert["sbert_similarity"],
     }
 
+    results = []
     for name, scores in models.items():
-        micro_corr = scores.corr(tfidf["micro_score"])
-        macro_corr = scores.corr(tfidf["macro_score"])
-
         results.append({
             "Model": name,
-            "Micro Score Correlation": micro_corr,
-            "Macro Score Correlation": macro_corr
+            "Micro Score Correlation": scores.corr(micro_gt),
+            "Macro Score Correlation": scores.corr(macro_gt),
         })
 
     return pd.DataFrame(results)
 
 
-def plot_correlations(df):
-    df.set_index("Model")[[
-        "Micro Score Correlation",
-        "Macro Score Correlation"
-    ]].plot(kind="bar")
-
-    plt.title("Model Performance Comparison")
-    plt.ylabel("Correlation")
-    plt.xticks(rotation=0)
-    plt.tight_layout()
-
-    path = os.path.join(OUTPUT_DIR, "model_comparison_bar.png")
-    plt.savefig(path)
-    plt.show()
-
-    print(f"Saved plot to: {path}")
+def plot_correlations(df: pd.DataFrame) -> None:
+    fig, ax = plt.subplots()
+    df.set_index("Model")[["Micro Score Correlation", "Macro Score Correlation"]].plot(
+        kind="bar", ax=ax
+    )
+    ax.set_title("Model Performance Comparison")
+    ax.set_ylabel("Correlation")
+    ax.set_xticklabels(ax.get_xticklabels(), rotation=0)
+    fig.tight_layout()
+    fig.savefig(MODEL_COMPARISON_PLOT)
+    plt.close(fig)
+    print(f"Saved plot to: {MODEL_COMPARISON_PLOT}")
 
 
-def scatter_plot(df, column_name, title):
-    plt.scatter(df[column_name], df["micro_score"], alpha=0.5)
-    plt.xlabel(column_name)
-    plt.ylabel("Micro Score")
-    plt.title(title)
-    plt.tight_layout()
+def scatter_plot(df: pd.DataFrame, column_name: str, title: str) -> None:
+    fig, ax = plt.subplots()     # new figure each call — prevents bleed-across
+    ax.scatter(df[column_name], df["micro_score"], alpha=0.5)
+    ax.set_xlabel(column_name)
+    ax.set_ylabel("Micro Score")
+    ax.set_title(title)
+    fig.tight_layout()
 
     filename = f"{column_name}_scatter.png"
-    path = os.path.join(OUTPUT_DIR, filename)
-
-    plt.savefig(path)
-    plt.show()
-
+    import os
+    path = os.path.join(PROCESSED_DIR, filename)
+    fig.savefig(path)
+    plt.close(fig)
     print(f"Saved plot to: {path}")
 
 
@@ -87,9 +86,8 @@ def main():
     print("\nModel Comparison:")
     print(comparison_df)
 
-    comparison_path = os.path.join(OUTPUT_DIR, "model_comparison.csv")
-    comparison_df.to_csv(comparison_path, index=False)
-    print(f"\nSaved comparison table to: {comparison_path}")
+    comparison_df.to_csv(MODEL_COMPARISON_PATH, index=False)
+    print(f"\nSaved comparison table to: {MODEL_COMPARISON_PATH}")
 
     print("\nGenerating bar chart...")
     plot_correlations(comparison_df)

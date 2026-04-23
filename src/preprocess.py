@@ -3,12 +3,46 @@ import re
 import pandas as pd
 
 
-def clean_text(text):
+# Common abbreviation/variant normalization map
+_NORMALIZATIONS = {
+    "powerbi": "power bi",
+    "ms excel": "excel",
+    "microsoft excel": "excel",
+    "ms word": "word",
+    "microsoft word": "word",
+    "seo/sem": "seo sem",
+    "ms powerpoint": "powerpoint",
+    "microsoft powerpoint": "powerpoint",
+}
+
+
+def clean_text(text: str) -> str:
+    """
+    Lightweight cleaner used for building the main resume/JD columns.
+    Lowercases, collapses whitespace, and strips.
+    """
     if not isinstance(text, str):
         return ""
     text = text.lower()
     text = re.sub(r"\s+", " ", text)
     return text.strip()
+
+
+def normalize_text(text: str) -> str:
+    """
+    Thorough normalizer used for skill matching.
+    Applies variant normalization, strips punctuation, and collapses whitespace.
+    """
+    text = str(text).lower()
+
+    for variant, canonical in _NORMALIZATIONS.items():
+        text = text.replace(variant, canonical)
+
+    # Remove punctuation but keep letters, numbers, and spaces
+    text = re.sub(r"[^a-z0-9\s]+", " ", text)
+    text = re.sub(r"\s+", " ", text).strip()
+
+    return text
 
 
 def build_clean_dataframe(df: pd.DataFrame) -> pd.DataFrame:

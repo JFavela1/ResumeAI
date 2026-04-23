@@ -1,8 +1,9 @@
-pandas
-numpy
-scikit-learn
-sentence-transformers
-datasets
-rank-bm25
-matplotlib
-
+pandas==2.3.3
+numpy==2.2.6
+scikit-learn==1.8.0
+sentence-transformers==5.4.1
+datasets==4.8.4
+rank-bm25==0.2.2
+matplotlib==3.10.8
+huggingface-hub==1.11.0
+torch==2.11.0

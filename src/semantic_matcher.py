@@ -1,14 +1,14 @@
 # Build a semantic matcher using SBERT
-# The score was low
-import os
+import numpy as np
 import pandas as pd
 from sentence_transformers import SentenceTransformer
-from sklearn.metrics.pairwise import cosine_similarity
 
-
-BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-INPUT_PATH = os.path.join(BASE_DIR, "data", "processed", "clean_resume_job_pairs.csv")
-OUTPUT_PATH = os.path.join(BASE_DIR, "data", "processed", "sbert_results.csv")
+from config import (
+    CLEAN_PAIRS_PATH,
+    SBERT_OUTPUT_PATH,
+    SBERT_MODEL_NAME,
+    SBERT_BATCH_SIZE,
+)
 
 
 def load_clean_data(path: str) -> pd.DataFrame:
@@ -17,7 +17,7 @@ def load_clean_data(path: str) -> pd.DataFrame:
 
 def compute_sbert_similarity(
     df: pd.DataFrame,
-    model_name: str = "sentence-transformers/all-MiniLM-L6-v2"
+    model_name: str = SBERT_MODEL_NAME,
 ) -> pd.DataFrame:
     df = df.copy()
 
@@ -29,26 +29,24 @@ def compute_sbert_similarity(
     print("Encoding resumes...")
     resume_embeddings = model.encode(
         resume_texts,
-        batch_size=32,
+        batch_size=SBERT_BATCH_SIZE,
         show_progress_bar=True,
-        convert_to_numpy=True
+        convert_to_numpy=True,
+        normalize_embeddings=True,   # L2-normalize so dot product == cosine sim
     )
 
     print("Encoding job descriptions...")
     job_embeddings = model.encode(
         job_texts,
-        batch_size=32,
+        batch_size=SBERT_BATCH_SIZE,
         show_progress_bar=True,
-        convert_to_numpy=True
+        convert_to_numpy=True,
+        normalize_embeddings=True,
     )
 
-    similarities = []
-    for i in range(len(df)):
-        sim = cosine_similarity(
-            resume_embeddings[i].reshape(1, -1),
-            job_embeddings[i].reshape(1, -1)
-        )[0][0]
-        similarities.append(sim)
+    # Vectorized element-wise dot product across all pairs at once —
+    # equivalent to cosine similarity after L2 normalization above.
+    similarities = (resume_embeddings * job_embeddings).sum(axis=1)
 
     df["sbert_similarity"] = similarities
     return df
@@ -56,15 +54,15 @@ def compute_sbert_similarity(
 
 def main():
     print("Loading cleaned dataset...")
-    df = load_clean_data(INPUT_PATH)
+    df = load_clean_data(CLEAN_PAIRS_PATH)
 
     print(f"Dataset shape: {df.shape}")
     print("Computing SBERT similarity...")
 
     results_df = compute_sbert_similarity(df)
-    results_df.to_csv(OUTPUT_PATH, index=False)
+    results_df.to_csv(SBERT_OUTPUT_PATH, index=False)
 
-    print(f"\nSaved SBERT results to: {OUTPUT_PATH}")
+    print(f"\nSaved SBERT results to: {SBERT_OUTPUT_PATH}")
     print(f"Shape: {results_df.shape}")
 
     print("\nPreview:")

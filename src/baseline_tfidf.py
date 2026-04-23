@@ -1,13 +1,14 @@
 # Baseline TF-IDF similarity matcher
-import os
+import numpy as np
 import pandas as pd
 from sklearn.feature_extraction.text import TfidfVectorizer
-from sklearn.metrics.pairwise import cosine_similarity
 
-
-BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-INPUT_PATH = os.path.join(BASE_DIR, "data", "processed", "clean_resume_job_pairs.csv")
-OUTPUT_PATH = os.path.join(BASE_DIR, "data", "processed", "tfidf_results.csv")
+from config import (
+    CLEAN_PAIRS_PATH,
+    TFIDF_OUTPUT_PATH,
+    TFIDF_MAX_FEATURES,
+    TFIDF_STOP_WORDS,
+)
 
 
 def load_clean_data(path: str) -> pd.DataFrame:
@@ -18,8 +19,8 @@ def compute_tfidf_similarity(df: pd.DataFrame) -> pd.DataFrame:
     df = df.copy()
 
     vectorizer = TfidfVectorizer(
-        stop_words="english",
-        max_features=5000
+        stop_words=TFIDF_STOP_WORDS,
+        max_features=TFIDF_MAX_FEATURES,
     )
 
     combined_text = pd.concat(
@@ -32,10 +33,11 @@ def compute_tfidf_similarity(df: pd.DataFrame) -> pd.DataFrame:
     resume_vectors = vectorizer.transform(df["resume_clean"].fillna(""))
     job_vectors = vectorizer.transform(df["job_description_clean"].fillna(""))
 
-    similarities = []
-    for i in range(len(df)):
-        sim = cosine_similarity(resume_vectors[i], job_vectors[i])[0][0]
-        similarities.append(sim)
+    # Vectorized row-wise dot product on sparse matrices (equivalent to
+    # cosine similarity when vectors are already L2-normalized by TF-IDF).
+    # Much faster than looping with cosine_similarity() one row at a time.
+    dot_products = resume_vectors.multiply(job_vectors).sum(axis=1)
+    similarities = np.asarray(dot_products).flatten()
 
     df["tfidf_similarity"] = similarities
     return df
@@ -43,15 +45,15 @@ def compute_tfidf_similarity(df: pd.DataFrame) -> pd.DataFrame:
 
 def main():
     print("Loading cleaned dataset...")
-    df = load_clean_data(INPUT_PATH)
+    df = load_clean_data(CLEAN_PAIRS_PATH)
 
     print(f"Dataset shape: {df.shape}")
     print("Computing TF-IDF similarity...")
 
     results_df = compute_tfidf_similarity(df)
-    results_df.to_csv(OUTPUT_PATH, index=False)
+    results_df.to_csv(TFIDF_OUTPUT_PATH, index=False)
 
-    print(f"\nSaved TF-IDF results to: {OUTPUT_PATH}")
+    print(f"\nSaved TF-IDF results to: {TFIDF_OUTPUT_PATH}")
     print(f"Shape: {results_df.shape}")
 
     print("\nPreview:")
