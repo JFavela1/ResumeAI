@@ -211,7 +211,7 @@ def analyze(
     resume: str,
     job_description: str,
     model: str = AGENT_MODEL,
-    verbose: bool = False,
+    verbose: bool = True,
 ) -> dict:
     """
     Analyze how well a resume matches a job description.
