@@ -29,3 +29,7 @@ TFIDF_STOP_WORDS = "english"
 
 # ── Hugging Face dataset ───────────────────────────────────────────────────────
 HF_DATASET_REPO = "netsol/resume-score-details"
+
+# ── Agent settings ─────────────────────────────────────────────────────────────
+AGENT_MODEL = "claude-sonnet-4-6"   # model used by the AgentMatch orchestrator
+AGENT_MAX_TOKENS = 4096

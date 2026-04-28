@@ -11,13 +11,13 @@ ResumeAI/
 ├── src/
 │   ├── config.py            # Central config: paths, model names, hyperparameters
 │   ├── data_loader.py       # Downloads raw dataset from Hugging Face
-│   ├── preprocess.py        # Text cleaning and DataFrame builder
+│   ├── preprocess.py        # Text cleaning (clean_text + normalize_text)
 │   ├── baseline_tfidf.py    # TF-IDF cosine similarity baseline
-│   ├── baseline_bm25.py     # BM25 similarity baseline
+│   ├── baseline_bm25.py     # BM25 keyword relevance baseline
 │   ├── semantic_matcher.py  # SBERT semantic similarity
 │   ├── skill_gap.py         # Skill gap analysis and recommendations
 │   ├── evaluate.py          # Model comparison and plots
-│   └── agent.py             # Agentic AI orchestrator (in progress)
+│   └── agent.py             # AgentMatch — LLM-powered orchestrator
 ├── data/
 │   ├── build_dataset.py     # One-time pipeline: download → clean → save
 │   └── processed/           # Generated CSVs and plots (git-ignored)
@@ -37,6 +37,9 @@ source resume/bin/activate      # Windows: resume\Scripts\activate
 
 # 2. Install dependencies
 pip install -r requirements.txt
+
+# 3. Set your Anthropic API key (required for the agent)
+export ANTHROPIC_API_KEY=sk-ant-...
 ```
 
 ---
@@ -65,11 +68,85 @@ python skill_gap.py
 ```
 
 ### Step 4 — Evaluate and compare models
-Generates a correlation comparison table and scatter/bar plots.
+Generates a correlation comparison table and scatter/bar plots in `data/processed/`.
 ```bash
 cd src
 python evaluate.py
 ```
+
+---
+
+## AgentMatch — LLM Agent
+
+The agent orchestrates all three matchers and the skill gap analyzer through Claude's tool-use API, then synthesizes a structured recommendation.
+
+### Quick start
+
+```python
+from src.agent import analyze
+
+resume = """
+Jane Doe | Python Developer
+Skills: Python, Django, PostgreSQL, scikit-learn, Docker
+Experience: 3 years backend development, REST APIs, agile teams
+"""
+
+job_description = """
+Senior Python Engineer
+Requirements: 4+ years Python, Django or FastAPI, PostgreSQL,
+machine learning experience, Docker, strong communication skills.
+"""
+
+result = analyze(resume, job_description)
+print(result)
+```
+
+### Output format
+
+```json
+{
+  "scores": {
+    "tfidf_similarity": 0.61,
+    "bm25_score": 3.84,
+    "sbert_similarity": 0.79,
+    "overall_fit_pct": 72
+  },
+  "skill_analysis": {
+    "matched_skills": ["python", "django", "postgresql", "docker"],
+    "missing_skills": ["machine learning", "fastapi"]
+  },
+  "fit_level": "Good",
+  "recommendation": "Jane's profile is a strong keyword and semantic match for this role..."
+}
+```
+
+### Fit levels
+
+| Fit Level | overall_fit_pct |
+|-----------|----------------|
+| Strong | ≥ 70% |
+| Good | 50–69% |
+| Fair | 30–49% |
+| Poor | < 30% |
+
+### Running the built-in demo
+```bash
+cd src && python agent.py
+```
+Add `verbose=True` to `analyze()` to print each tool call as the agent works through it.
+
+### Estimated API cost
+
+The agent uses `claude-sonnet-4-6` ($3 / MTok input, $15 / MTok output).
+
+| Use case | Estimated cost |
+|----------|---------------|
+| Single analysis | ~$0.03 |
+| 100 analyses (development) | ~$3 |
+| Full 889-row dataset | ~$25–30 |
+| 1,000 analyses/month | ~$30 |
+
+To reduce cost for batch runs, switch `AGENT_MODEL` in `src/config.py` to `claude-haiku-4-5` (~5× cheaper, slightly lower quality).
 
 ---
 
@@ -81,8 +158,9 @@ python evaluate.py
 
 ## Models
 
-| Model | Description |
-|-------|-------------|
-| TF-IDF | Bag-of-words cosine similarity |
-| BM25 | Probabilistic keyword retrieval |
-| SBERT | Sentence-level semantic embeddings (`all-MiniLM-L6-v2`) |
+| Model | Type | Description |
+|-------|------|-------------|
+| TF-IDF | Baseline | Bag-of-words cosine similarity |
+| BM25 | Baseline | Probabilistic keyword retrieval |
+| SBERT | Semantic | Sentence-level embeddings (`all-MiniLM-L6-v2`) |
+| AgentMatch | Agent | Claude-powered orchestrator with tool use |
