@@ -1,20 +1,34 @@
 # AgentMatch — LLM-powered resume × job-description analysis agent
 #
 # Usage:
-#   from agent import analyze
-#   result = analyze(resume_text, job_description_text)
+#   from project root:  from src.agent import analyze
+#   from src/ folder:   from agent import analyze
 #
 # Requirements:
-#   pip install anthropic
-#   export ANTHROPIC_API_KEY=sk-ant-...
+#   pip install openai
+#   export OPENAI_API_KEY=sk-...
 
 import json
+import os
+import sys
+
+# Importing as `src.agent` does not put `src/` on sys.path; local imports need it.
+_SRC_DIR = os.path.dirname(os.path.abspath(__file__))
+if _SRC_DIR not in sys.path:
+    sys.path.insert(0, _SRC_DIR)
 from functools import lru_cache
 
-import anthropic
 import numpy as np
+from openai import APIConnectionError, APITimeoutError, OpenAI, RateLimitError
 
-from config import AGENT_MODEL, AGENT_MAX_TOKENS, SBERT_MODEL_NAME
+from config import (
+    AGENT_MAX_TOKENS,
+    AGENT_MAX_TOOL_ROUNDS,
+    AGENT_MODEL,
+    OPENAI_MAX_RETRIES,
+    OPENAI_TIMEOUT,
+    SBERT_MODEL_NAME,
+)
 from preprocess import clean_text
 from baseline_tfidf import compute_tfidf_similarity
 from baseline_bm25 import compute_bm25_pair_scores
@@ -67,7 +81,7 @@ def _check_skill_match(resume: str, skills: list[str]) -> dict:
     return {"matched": matched, "missing": missing}
 
 
-# ── Tool schemas (passed to Claude) ───────────────────────────────────────────
+# ── Tool specs (JSON Schema parameters → OpenAI function tools) ──────────────
 
 _TOOLS = [
     {
@@ -138,6 +152,18 @@ _TOOLS = [
             "required": ["resume", "skills"],
         },
     },
+]
+
+_OPENAI_TOOLS = [
+    {
+        "type": "function",
+        "function": {
+            "name": spec["name"],
+            "description": spec["description"],
+            "parameters": spec["input_schema"],
+        },
+    }
+    for spec in _TOOLS
 ]
 
 # ── Tool dispatcher ────────────────────────────────────────────────────────────
@@ -223,7 +249,7 @@ def analyze(
     job_description : str
         Full text of the job posting.
     model : str
-        Claude model to use (default: config.AGENT_MODEL).
+        OpenAI chat model to use (default: config.AGENT_MODEL).
     verbose : bool
         If True, prints each tool call and its result.
 
@@ -231,9 +257,10 @@ def analyze(
     -------
     dict with keys: scores, skill_analysis, fit_level, recommendation
     """
-    client = anthropic.Anthropic()
+    client = OpenAI(timeout=OPENAI_TIMEOUT, max_retries=OPENAI_MAX_RETRIES)
 
-    messages = [
+    messages: list = [
+        {"role": "system", "content": _SYSTEM},
         {
             "role": "user",
             "content": (
@@ -241,51 +268,85 @@ def analyze(
                 f"RESUME:\n{resume}\n\n"
                 f"JOB DESCRIPTION:\n{job_description}"
             ),
-        }
+        },
     ]
 
-    # Agentic tool-use loop
+    rounds = 0
     while True:
-        response = client.messages.create(
-            model=model,
-            max_tokens=AGENT_MAX_TOKENS,
-            system=_SYSTEM,
-            tools=_TOOLS,
-            messages=messages,
-        )
+        if rounds >= AGENT_MAX_TOOL_ROUNDS:
+            raise RuntimeError("Exceeded maximum tool rounds; possible agent loop.")
+        rounds += 1
 
-        # Add the assistant turn to history
-        messages.append({"role": "assistant", "content": response.content})
-
-        if response.stop_reason == "end_turn":
-            # Extract the final text block and parse JSON
-            text = next(
-                (block.text for block in response.content if hasattr(block, "text")),
-                "",
+        try:
+            response = client.chat.completions.create(
+                model=model,
+                messages=messages,
+                tools=_OPENAI_TOOLS,
+                tool_choice="auto",
+                max_tokens=AGENT_MAX_TOKENS,
             )
-            start, end = text.find("{"), text.rfind("}") + 1
-            if start == -1:
-                raise ValueError(f"Agent returned no JSON.\nRaw response:\n{text}")
-            return json.loads(text[start:end])
+        except APITimeoutError as exc:
+            raise RuntimeError(
+                "OpenAI request timed out. Try increasing OPENAI_TIMEOUT in src/config.py "
+                "or check your connection."
+            ) from exc
+        except APIConnectionError as exc:
+            raise RuntimeError(
+                "Could not connect to OpenAI (network). Check internet, VPN/firewall/proxy, "
+                "that api.openai.com is reachable, and https://status.openai.com — "
+                f"details: {exc}"
+            ) from exc
+        except RateLimitError as exc:
+            raise RuntimeError(
+                "OpenAI rate limit hit. Wait a minute and retry, or use a different key/org."
+            ) from exc
 
-        if response.stop_reason == "tool_use":
-            tool_results = []
-            for block in response.content:
-                if block.type == "tool_use":
+        choice = response.choices[0]
+        msg = choice.message
+
+        if msg.tool_calls:
+            messages.append(
+                {
+                    "role": "assistant",
+                    "content": msg.content,
+                    "tool_calls": [
+                        {
+                            "id": tc.id,
+                            "type": "function",
+                            "function": {
+                                "name": tc.function.name,
+                                "arguments": tc.function.arguments,
+                            },
+                        }
+                        for tc in msg.tool_calls
+                    ],
+                }
+            )
+            for tc in msg.tool_calls:
+                name = tc.function.name
+                try:
+                    inputs = json.loads(tc.function.arguments or "{}")
+                except json.JSONDecodeError as exc:
+                    result = json.dumps({"error": f"Invalid JSON arguments: {exc}"})
+                else:
                     if verbose:
-                        print(f"[tool] {block.name}({json.dumps(block.input)[:80]}...)")
-                    result = _dispatch(block.name, block.input)
+                        print(f"[tool] {name}({json.dumps(inputs)[:80]}...)")
+                    result = _dispatch(name, inputs)
                     if verbose:
                         print(f"       → {result[:120]}")
-                    tool_results.append({
-                        "type": "tool_result",
-                        "tool_use_id": block.id,
-                        "content": result,
-                    })
-            messages.append({"role": "user", "content": tool_results})
+                messages.append({"role": "tool", "tool_call_id": tc.id, "content": result})
+            continue
 
-        else:
-            raise RuntimeError(f"Unexpected stop_reason: {response.stop_reason}")
+        text = (msg.content or "").strip()
+        if not text:
+            raise ValueError(
+                f"Agent returned empty content.\nfinish_reason={choice.finish_reason}\n"
+                f"message={msg!r}"
+            )
+        start, end = text.find("{"), text.rfind("}") + 1
+        if start == -1:
+            raise ValueError(f"Agent returned no JSON.\nRaw response:\n{text}")
+        return json.loads(text[start:end])
 
 
 # ── CLI demo ───────────────────────────────────────────────────────────────────

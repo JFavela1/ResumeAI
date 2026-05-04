@@ -30,6 +30,10 @@ TFIDF_STOP_WORDS = "english"
 # ── Hugging Face dataset ───────────────────────────────────────────────────────
 HF_DATASET_REPO = "netsol/resume-score-details"
 
-# ── Agent settings ─────────────────────────────────────────────────────────────
-AGENT_MODEL = "claude-sonnet-4-6"   # model used by the AgentMatch orchestrator
+# ── Agent settings (OpenAI Chat Completions + tools) ───────────────────────────
+AGENT_MODEL = "gpt-4o-mini"  # AgentMatch orchestrator; e.g. gpt-4o, gpt-4o-mini
 AGENT_MAX_TOKENS = 4096
+AGENT_MAX_TOOL_ROUNDS = 24  # safety cap on tool-call turns
+# Per HTTP request (tool rounds use multiple requests). Raise if your network is slow.
+OPENAI_TIMEOUT = 120.0
+OPENAI_MAX_RETRIES = 3

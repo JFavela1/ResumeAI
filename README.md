@@ -38,8 +38,8 @@ source resume/bin/activate      # Windows: resume\Scripts\activate
 # 2. Install dependencies
 pip install -r requirements.txt
 
-# 3. Set your Anthropic API key (required for the agent)
-export ANTHROPIC_API_KEY=sk-ant-...
+# 3. Set your OpenAI API key (required for the agent)
+export OPENAI_API_KEY=sk-...
 ```
 
 ---
@@ -78,7 +78,7 @@ python evaluate.py
 
 ## AgentMatch — LLM Agent
 
-The agent orchestrates all three matchers and the skill gap analyzer through Claude's tool-use API, then synthesizes a structured recommendation.
+The agent orchestrates all three matchers and the skill gap analyzer through OpenAI's function-calling API, then synthesizes a structured recommendation.
 
 ### Quick start
 
@@ -137,16 +137,9 @@ Add `verbose=True` to `analyze()` to print each tool call as the agent works thr
 
 ### Estimated API cost
 
-The agent uses `claude-sonnet-4-6` ($3 / MTok input, $15 / MTok output).
+The default orchestrator model is `gpt-4o-mini` in `src/config.py`. Pricing varies by model and token usage; see [OpenAI pricing](https://openai.com/pricing). Typical single analyses are on the order of a few cents with `gpt-4o-mini`.
 
-| Use case | Estimated cost |
-|----------|---------------|
-| Single analysis | ~$0.03 |
-| 100 analyses (development) | ~$3 |
-| Full 889-row dataset | ~$25–30 |
-| 1,000 analyses/month | ~$30 |
-
-To reduce cost for batch runs, switch `AGENT_MODEL` in `src/config.py` to `claude-haiku-4-5` (~5× cheaper, slightly lower quality).
+To change model or token budget, edit `AGENT_MODEL` and `AGENT_MAX_TOKENS` in `src/config.py`.
 
 ---
 
@@ -163,4 +156,4 @@ To reduce cost for batch runs, switch `AGENT_MODEL` in `src/config.py` to `claud
 | TF-IDF | Baseline | Bag-of-words cosine similarity |
 | BM25 | Baseline | Probabilistic keyword retrieval |
 | SBERT | Semantic | Sentence-level embeddings (`all-MiniLM-L6-v2`) |
-| AgentMatch | Agent | Claude-powered orchestrator with tool use |
+| AgentMatch | Agent | OpenAI chat model with function calling |
