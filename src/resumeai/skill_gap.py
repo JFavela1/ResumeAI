@@ -1,7 +1,7 @@
 import pandas as pd
 
-from config import CLEAN_PAIRS_WITH_SKILLS_PATH, SKILL_GAP_OUTPUT_PATH
-from preprocess import normalize_text
+from .config import CLEAN_PAIRS_WITH_SKILLS_PATH, SKILL_GAP_OUTPUT_PATH
+from .preprocess import normalize_text
 
 
 def load_data(path: str) -> pd.DataFrame:

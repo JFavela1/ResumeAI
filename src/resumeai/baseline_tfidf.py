@@ -3,7 +3,7 @@ import numpy as np
 import pandas as pd
 from sklearn.feature_extraction.text import TfidfVectorizer
 
-from config import (
+from .config import (
     CLEAN_PAIRS_PATH,
     TFIDF_OUTPUT_PATH,
     TFIDF_MAX_FEATURES,

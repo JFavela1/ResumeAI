@@ -1,0 +1,78 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>ResumeAI — AgentMatch</title>
+  <link rel="stylesheet" href="/static/style.css" />
+</head>
+<body>
+  <header class="header">
+    <h1>ResumeAI</h1>
+    <p class="tagline">Upload a resume and paste a job posting to run AgentMatch.</p>
+  </header>
+
+  <main class="main">
+    {% if error %}
+    <p class="alert alert-error" role="alert">{{ error }}</p>
+    {% endif %}
+
+    <form
+      class="card"
+      method="post"
+      action="/analyze"
+      enctype="multipart/form-data"
+    >
+      <fieldset>
+        <legend>OpenAI API Key</legend>
+        <label for="api_key">Your API key</label>
+        <p class="hint">Your key is sent directly to OpenAI and never stored. Get one at <a href="https://platform.openai.com/api-keys" target="_blank" rel="noopener" class="link-back">platform.openai.com/api-keys</a>.</p>
+        <input
+          id="api_key"
+          name="api_key"
+          type="password"
+          required
+          autocomplete="off"
+          placeholder="sk-..."
+          class="input-text"
+        />
+      </fieldset>
+
+      <fieldset>
+        <legend>Job posting</legend>
+        <label for="job_text">Paste the full job description</label>
+        <p class="hint">Minimum <strong>{{ min_job_chars }}</strong> characters (after trimming). Each field is limited to about {{ max_text_chars }} characters server-side.</p>
+        <textarea
+          id="job_text"
+          name="job_text"
+          rows="14"
+          required
+          minlength="{{ min_job_chars }}"
+          placeholder="Paste the job posting here…"
+        >{{ job_text or '' }}</textarea>
+      </fieldset>
+
+      <fieldset>
+        <legend>Resume</legend>
+        <p class="hint">Provide a <strong>.pdf</strong> or <strong>.txt</strong> file, <em>or</em> paste resume text — not both required.</p>
+        <label for="resume_file">Resume file (optional)</label>
+        <input id="resume_file" name="resume_file" type="file" accept=".pdf,.txt" />
+
+        <label for="resume_text">Resume text (optional)</label>
+        <textarea
+          id="resume_text"
+          name="resume_text"
+          rows="12"
+          placeholder="Or paste your resume here…"
+        >{{ resume_text or '' }}</textarea>
+      </fieldset>
+
+      <button type="submit" class="btn-primary">Analyze match</button>
+    </form>
+
+    <p class="api-hint">
+      JSON API: <code>POST /api/analyze</code> with the same form fields (<code>multipart/form-data</code>).
+    </p>
+  </main>
+</body>
+</html>

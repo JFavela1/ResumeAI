@@ -5,8 +5,8 @@ import os
 import pandas as pd
 from huggingface_hub import snapshot_download
 
-from config import HF_DATASET_REPO
-from preprocess import build_clean_dataframe
+from .config import HF_DATASET_REPO
+from .preprocess import build_clean_dataframe
 
 
 def load_data() -> pd.DataFrame:

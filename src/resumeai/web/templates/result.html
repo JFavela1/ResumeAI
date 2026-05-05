@@ -1,0 +1,81 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Analysis — ResumeAI</title>
+  <link rel="stylesheet" href="/static/style.css" />
+</head>
+<body>
+  <header class="header">
+    <h1>Analysis</h1>
+    <p class="tagline">
+      Fit: <strong>{{ result.fit_level }}</strong>
+      ({{ result.scores.overall_fit_pct }}% overall)
+    </p>
+    <p><a href="/" class="link-back">&larr; New analysis</a></p>
+  </header>
+
+  <main class="main">
+    <section class="card">
+      <h2>Scores</h2>
+      <dl class="scores">
+        <dt>TF-IDF similarity</dt>
+        <dd>{{ "%.4f"|format(result.scores.tfidf_similarity) }}</dd>
+        <dt>BM25 score</dt>
+        <dd>{{ "%.4f"|format(result.scores.bm25_score) }}</dd>
+        <dt>SBERT similarity</dt>
+        <dd>{{ "%.4f"|format(result.scores.sbert_similarity) }}</dd>
+        <dt>Overall fit</dt>
+        <dd>{{ result.scores.overall_fit_pct }}%</dd>
+      </dl>
+    </section>
+
+    <section class="card">
+      <h2>Skills</h2>
+      <div class="skills">
+        <div>
+          <h3>Matched</h3>
+          <ul>
+            {% for s in result.skill_analysis.matched_skills %}
+            <li>{{ s }}</li>
+            {% else %}
+            <li class="muted">None listed</li>
+            {% endfor %}
+          </ul>
+        </div>
+        <div>
+          <h3>Missing / gap</h3>
+          <ul>
+            {% for s in result.skill_analysis.missing_skills %}
+            <li>{{ s }}</li>
+            {% else %}
+            <li class="muted">None listed</li>
+            {% endfor %}
+          </ul>
+        </div>
+      </div>
+    </section>
+
+    <section class="card">
+      <h2>Recommendation</h2>
+      <p class="recommendation">{{ result.recommendation }}</p>
+    </section>
+
+    <section class="card">
+      <h2>Raw JSON</h2>
+      <pre class="json-block"><code>{{ result_json }}</code></pre>
+      <button type="button" class="btn-secondary" id="copy-json">Copy JSON</button>
+    </section>
+  </main>
+
+  <script>
+    document.getElementById("copy-json").addEventListener("click", function () {
+      const text = document.querySelector(".json-block code").textContent;
+      navigator.clipboard.writeText(text).then(function () {
+        alert("Copied to clipboard.");
+      });
+    });
+  </script>
+</body>
+</html>

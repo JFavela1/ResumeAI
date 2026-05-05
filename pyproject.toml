@@ -1,0 +1,59 @@
+[build-system]
+requires = ["setuptools>=61"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "resumeai"
+version = "0.1.0"
+description = "AI-powered resume and job-description matching with baselines, semantic scoring, skill gaps, and an LLM agent."
+readme = "README.md"
+requires-python = ">=3.10"
+dependencies = [
+    "openai>=1.0.0",
+    "python-dotenv>=1.0.0",
+    "pandas==2.3.3",
+    "numpy==2.2.6",
+    "scikit-learn==1.8.0",
+    "sentence-transformers==5.4.1",
+    "datasets==4.8.4",
+    "rank-bm25==0.2.2",
+    "matplotlib==3.10.8",
+    "huggingface-hub==1.11.0",
+    "torch==2.11.0",
+]
+
+[project.optional-dependencies]
+dev = [
+    "pytest>=8",
+]
+web = [
+    "fastapi>=0.115.0",
+    "uvicorn[standard]>=0.32.0",
+    "python-multipart>=0.0.12",
+    "jinja2>=3.1.0",
+    "pypdf>=5.0.0",
+]
+
+[project.scripts]
+resumeai-pipeline = "resumeai.pipeline:main"
+resumeai-build-dataset = "resumeai.build_dataset:main"
+resumeai-tfidf = "resumeai.baseline_tfidf:main"
+resumeai-bm25 = "resumeai.baseline_bm25:main"
+resumeai-sbert = "resumeai.semantic_matcher:main"
+resumeai-skill-gap = "resumeai.skill_gap:main"
+resumeai-evaluate = "resumeai.evaluate:main"
+resumeai-web = "resumeai.web.__main__:main"
+
+[tool.setuptools]
+package-dir = {"" = "src"}
+include-package-data = true
+
+[tool.setuptools.package-data]
+resumeai = [
+    "web/templates/*.html",
+    "web/static/*.css",
+]
+
+[tool.setuptools.packages.find]
+where = ["src"]
+include = ["resumeai*"]

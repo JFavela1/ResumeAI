@@ -9,11 +9,20 @@ venv/
 resume/
 .env/
 
+# Packaging/build artifacts
+build/
+dist/
+*.egg-info/
+
 # Environment variables — never commit secrets
 .env
 
 # Jupyter
 .ipynb_checkpoints/
+
+# Generated pipeline outputs
+data/processed/*
+!data/processed/.gitkeep
 
 
 

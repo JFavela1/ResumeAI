@@ -1,10 +1,12 @@
 # Evaluate and compare baseline model performance
-import pandas as pd
+import os
+
 import matplotlib
 matplotlib.use("Agg")   # non-interactive backend — safe for scripted runs
 import matplotlib.pyplot as plt
+import pandas as pd
 
-from config import (
+from .config import (
     TFIDF_OUTPUT_PATH,
     BM25_OUTPUT_PATH,
     SBERT_OUTPUT_PATH,
@@ -70,7 +72,6 @@ def scatter_plot(df: pd.DataFrame, column_name: str, title: str) -> None:
     fig.tight_layout()
 
     filename = f"{column_name}_scatter.png"
-    import os
     path = os.path.join(PROCESSED_DIR, filename)
     fig.savefig(path)
     plt.close(fig)

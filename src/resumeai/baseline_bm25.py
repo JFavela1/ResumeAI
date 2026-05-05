@@ -2,7 +2,7 @@
 import pandas as pd
 from rank_bm25 import BM25Okapi
 
-from config import CLEAN_PAIRS_PATH, BM25_OUTPUT_PATH
+from .config import CLEAN_PAIRS_PATH, BM25_OUTPUT_PATH
 
 
 def load_clean_data(path: str) -> pd.DataFrame:
